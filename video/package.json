@@ -1,0 +1,30 @@
+{
+  "name": "rentzor-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rentzor Instagram Reels (promo + explainer), built with Remotion",
+  "scripts": {
+    "studio": "remotion studio",
+    "audio": "python3 audio/build_audio.py",
+    "icons": "python3 scripts/cut_icons.py",
+    "render:promo:ru": "remotion render Promo-ru out/rentzor-promo-ru.mp4",
+    "render:explainer:ru": "remotion render Explainer-ru out/rentzor-explainer-ru.mp4",
+    "render:covers:ru": "remotion still PromoCover-ru out/rentzor-promo-ru-cover.png && remotion still ExplainerCover-ru out/rentzor-explainer-ru-cover.png",
+    "render:ru": "npm run render:promo:ru && npm run render:explainer:ru && npm run render:covers:ru",
+    "stills": "node scripts/stills.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.533",
+    "@remotion/cli": "4.0.533",
+    "@remotion/fonts": "4.0.533",
+    "@remotion/renderer": "4.0.533",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.533"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.10",
+    "typescript": "5.9.2"
+  }
+}
