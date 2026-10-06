@@ -4,7 +4,7 @@ import React from 'react';
 export type GlyphName =
   | 'search' | 'pin' | 'chevronDown' | 'chevronRight' | 'chevronLeft' | 'bell' | 'star' | 'bookmark'
   | 'home' | 'calendar' | 'user' | 'check' | 'shield' | 'camera' | 'wallet' | 'card' | 'lock'
-  | 'plus' | 'doc' | 'id' | 'photo' | 'box' | 'arrowUp' | 'scan' | 'filter' | 'clock' | 'map';
+  | 'plus' | 'doc' | 'id' | 'photo' | 'box' | 'arrowUp' | 'scan' | 'filter' | 'clock' | 'map' | 'phone';
 
 const paths: Record<GlyphName, React.ReactNode> = {
   search: (<><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>),
@@ -33,6 +33,7 @@ const paths: Record<GlyphName, React.ReactNode> = {
   scan: (<><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5" /><circle cx="12" cy="10.5" r="2.6" /><path d="M7.8 16.5a4.6 4.6 0 0 1 8.4 0" /></>),
   filter: (<><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></>),
   clock: (<><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>),
+  phone: <path d="M6.6 3.5h2.6l1.4 4.1-2 1.5a12 12 0 0 0 6.3 6.3l1.5-2 4.1 1.4v2.6a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z" />,
   map: (<><path d="M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z" /><path d="M9 4v13.5M15 6.5V20" /></>),
 };
 

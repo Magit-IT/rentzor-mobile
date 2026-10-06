@@ -1,17 +1,13 @@
 /**
  * Images are imported straight from the app (../../src/assets) so the Reels
- * reuse the exact product artwork; the 3D icon cut-outs in public/icons were
+ * reuse the exact product artwork; map views in public/maps are cropped from
+ * app screenshots, and the 3D icon cut-outs in public/icons were
  * cropped from src/assets/shared/{3d-iconlar…,category-icon}.png.
  */
 import { staticFile } from 'remotion';
 import heroGear from '../../src/assets/onboarding/premium-rental-app-illustration-1-2.png';
 import heroWallet from '../../src/assets/onboarding/premium-rental-app-illustration-1-3.png';
-import heroMap from '../../src/assets/onboarding/illustration-2.png';
-import mapTiles from '../../src/assets/shared/map-image.png';
 import cameraHero from '../../src/assets/home/product-kamera.png';
-import cameraNikon from '../../src/assets/search/image.png';
-import cameraCanon from '../../src/assets/search/image-3.png';
-import cameraNikonBag from '../../src/assets/search/image-5.png';
 import ps5 from '../../src/assets/home/product-ps5.jpg';
 import scooter from '../../src/assets/home/product-samokat.jpg';
 import drone from '../../src/assets/saved/product-dji.jpg';
@@ -22,24 +18,17 @@ import vr from '../../src/assets/location-notification/image.jpg';
 import xbox from '../../src/assets/saved/product-xbox.jpg';
 import avatarMalika from '../../src/assets/product/avatar-malika.jpg';
 import avatarDoston from '../../src/assets/product/avatar-doston.jpg';
-import emptyCards from '../../src/assets/empty-states/no-cards.png';
-import type { Product } from './copy/types';
+import type { Item } from './copy/types';
 
 export const img = {
   heroGear,
   heroWallet,
-  heroMap,
-  mapTiles,
   cameraHero,
-  cameraNikon,
-  cameraCanon,
-  cameraNikonBag,
   avatarMalika,
   avatarDoston,
-  emptyCards,
 };
 
-export const productImage: Record<Product['key'], string> = {
+export const productImage: Record<Item['key'], string> = {
   camera: cameraHero,
   ps5,
   scooter,

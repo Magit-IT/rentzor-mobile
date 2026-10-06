@@ -86,7 +86,7 @@ export const Scene: React.FC<{
 };
 
 export type SfxName =
-  | 'whoosh' | 'swipe' | 'pop' | 'tap' | 'type' | 'success' | 'notify' | 'coins' | 'shutter' | 'impact' | 'riser' | 'flip';
+  | 'whoosh' | 'swipe' | 'pop' | 'tap' | 'type' | 'success' | 'notify' | 'coins' | 'shutter' | 'impact' | 'riser' | 'flip' | 'logo';
 
 /** One-shot sound effect at an absolute frame of the parent sequence. */
 export const Sfx: React.FC<{ name: SfxName; at: number; volume?: number }> = ({ name, at, volume = 0.6 }) => (

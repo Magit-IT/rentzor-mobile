@@ -1,21 +1,22 @@
 /**
- * Explainer Reel — 83 s, 1080×1920, cut on the bar lines of
+ * Explainer Reel — 87 s, 1080×1920, cut on the bar lines of
  * music-explainer.wav (120 BPM, 60 frames per bar).
  *
  *     0  intro        logo reveal (the app's splash timing), "Как это работает?"
  *   180  two sides    rent what you need / rent out what you don't
- *   300  chapter 1    "Как арендовать"
- *   360  step 1       find it nearby (home → search → product)
- *   600  step 2       pick dates (calendar range, total)
- *   840  step 3       pay from the wallet (contract, pay, confirmed)
- *  1020  step 4       pickup photos → status → review
- *  1260  chapter 2    flip → "Как сдавать и зарабатывать"
- *  1320  step 1       MyID face check
- *  1500  step 2       new listing → sent for review → approved
- *  1740  step 3       new request → accept
- *  1920  step 4       earnings → withdraw to card
- *  2160  trust        why it's safe
- *  2340  CTA          logo, rentzor.uz
+ *   300  MyID         everyone verifies first (renters and owners)
+ *   420  chapter 1    "Как арендовать"
+ *   480  step 1       nearby items with distance, distance filter
+ *   720  step 2       dates + pickup/return time
+ *   900  step 3       pay from balance, terms + rental contract
+ *  1140  step 4       approximate area → exact address after booking
+ *  1320  step 5       photos at pickup
+ *  1500  chapter 2    flip → "Как сдавать и зарабатывать"
+ *  1560  step 1       owner mode → new listing
+ *  1800  step 2       new request → order → "Передал товар"
+ *  2040  step 3       dashboard → withdraw
+ *  2280  trust        why it's safe
+ *  2460  CTA          logo + sound logo, store badges
  */
 import React from 'react';
 import { AbsoluteFill, Img, Sequence, useCurrentFrame } from 'remotion';
@@ -24,7 +25,7 @@ import { icon3d, img } from '../assets';
 import { colors, FONT, GRADIENT, ink, muted, NAVY_GRADIENT, palette, yellow } from '../brand';
 import { COPIES } from '../copy';
 import type { Copy, Lines } from '../copy/types';
-import { AvatarUI, NotificationUI } from '../components/AppUI';
+import { AvatarUI } from '../components/AppUI';
 import { BlueBg, LightBg, NavyBg, WavePattern } from '../components/Backgrounds';
 import { CheckRow, Tile3D } from '../components/Bits';
 import { Cta } from '../components/Cta';
@@ -32,22 +33,25 @@ import { Icon } from '../components/Icon';
 import { Kicker, KineticText } from '../components/KineticText';
 import { LogoReveal } from '../components/Logo';
 import { Phone } from '../components/Phone';
-import { Music, Scene, Sfx, Tap } from '../components/Scene';
+import { Music, Scene, Sfx } from '../components/Scene';
 import {
-  CalendarSheet,
-  HomeScreen,
-  ListingScreen,
-  MyIdScreen,
-  OrderScreen,
-  OwnerHome,
-  PaymentScreen,
-  PhotoScreen,
-  ProductPage,
-  SearchScreen,
-  StatusScreen,
-} from '../components/Screens';
+  DashboardR,
+  DatePickerR,
+  FilterSheetR,
+  HomeR,
+  ItemPageR,
+  MyIdR,
+  NewListingR,
+  NotificationsR,
+  OrderR,
+  OwnerProfileR,
+  PaymentR,
+  PickupR,
+  RenterProfileR,
+} from '../components/Real';
+import { SideChip } from '../promo/Promo';
 
-export const EXPLAINER_FRAMES = 2490;
+export const EXPLAINER_FRAMES = 2610;
 
 const PHONE = { width: 600, left: 240, top: 640 };
 
@@ -135,65 +139,7 @@ const StepPhone: React.FC<{
   );
 };
 
-/** Card that pops out next to the phone (left side — clear of Instagram's buttons). */
-const Callout: React.FC<{ frame: number; at: number; until?: number; x: number; y: number; children: React.ReactNode; dark?: boolean }> = ({
-  frame,
-  at,
-  until,
-  x,
-  y,
-  children,
-  dark,
-}) => {
-  const s = pop(frame, at, 13, 170) * (until === undefined ? 1 : 1 - progress(frame, until, 8));
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: x,
-        top: y + bob(frame, 6, 90, at),
-        padding: '26px 34px',
-        borderRadius: 40,
-        background: dark ? '#FFFFFF' : '#FFFFFF',
-        boxShadow: '0 34px 70px -24px rgba(15,23,42,0.45), 0 6px 16px rgba(15,23,42,0.08)',
-        transform: `scale(${s})`,
-        transformOrigin: 'right center',
-        opacity: Math.min(1, s * 1.5),
-        zIndex: 30,
-      }}
-    >
-      {children}
-    </div>
-  );
-};
 
-/** A push banner dropping over the top of the phone. */
-const Banner: React.FC<{ frame: number; at: number; until?: number; title: string; body: string; time: string; pan?: number }> = ({
-  frame,
-  at,
-  until,
-  title,
-  body,
-  time,
-  pan = 0,
-}) => {
-  const s = pop(frame, at, 14, 160);
-  const out = until === undefined ? 0 : progress(frame, until, 10);
-  if (frame < at) return null;
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: (1080 - 361 * 2.3) / 2,
-        top: 600 - pan + (1 - s) * -260 - out * 260,
-        opacity: Math.min(1, s * 1.5) * (1 - out),
-        zIndex: 40,
-      }}
-    >
-      <NotificationUI title={title} body={body} time={time} scale={2.3} />
-    </div>
-  );
-};
 
 // ------------------------------------------------------------------ E1 intro
 const Intro: React.FC<{ copy: Copy }> = ({ copy }) => {
@@ -379,39 +325,48 @@ const Chapter: React.FC<{ copy: Copy; owner?: boolean }> = ({ copy, owner }) => 
   );
 };
 
-// ------------------------------------------------------------------ renter steps
-const R1Find: React.FC<{ copy: Copy }> = ({ copy }) => {
+// ------------------------------------------------------------------ MyID for everyone
+const MyIdStep: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
   return (
     <AbsoluteFill>
       <LightBg />
-      <StepHead frame={f} step={ex.step(1)} title={ex.r1.title} sub={ex.r1.sub} />
-      <StepPhone
-        frame={f}
-        rises
-        screens={[
-          {
-            from: 0,
-            node: (
-              <>
-                <HomeScreen copy={copy} frame={f} scrollAt={12} />
-                <Tap x={196} y={140} at={36} size={56} />
-              </>
-            ),
-          },
-          { from: 44, node: <SearchScreen copy={copy} frame={f} typeAt={52} resultsAt={84} tapAt={142} /> },
-          { from: 152, node: <ProductPage copy={copy} frame={f - 152} /> },
-        ]}
-      />
-      <Callout frame={f} at={100} until={140} x={24} y={880}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 70, height: 70, borderRadius: 35, background: palette.primary[0], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="pin" size={40} color={colors.primary} stroke={2.2} />
-          </div>
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 52, color: ink }}>{copy.searchResults[0].distance}</div>
-        </div>
-      </Callout>
+      <StepHead frame={f} step="MyID" title={ex.myid.title} sub={ex.myid.sub} />
+      <StepPhone frame={f} rises dark screenBg="#0B0F1A" screens={[{ from: 0, node: <MyIdR copy={copy} frame={f} scanAt={22} doneAt={86} name="renter" /> }]} />
+      <SideChip frame={f} at={94} x={24} y={1180} tone={palette.primary[60]} icon={<Icon name="user" size={30} color="#fff" stroke={2} />} text={copy.ui.renter} />
+      <SideChip frame={f} at={100} x={24} y={1320} tone={palette.violet[60]} icon={<Icon name="box" size={30} color="#fff" stroke={2} />} text={copy.ui.owner} />
+    </AbsoluteFill>
+  );
+};
+
+// ------------------------------------------------------------------ renter steps
+const R1Find: React.FC<{ copy: Copy }> = ({ copy }) => {
+  const f = useCurrentFrame();
+  const ex = copy.explainer;
+  const pan = panFor(f, [[168, 236]]);
+  return (
+    <AbsoluteFill>
+      <LightBg />
+      <StepHead frame={f} step={ex.step(1)} title={ex.r1.title} sub={ex.r1.sub} pan={pan} />
+      <PanGroup pan={pan}>
+        <StepPhone
+          frame={f}
+          rises
+          screens={[
+            {
+              from: 0,
+              node: (
+                <>
+                  <HomeR copy={copy} frame={f} highlightAt={40} scrollAt={64} />
+                  <FilterSheetR copy={copy} frame={f} at={124} typeAt={152} applyAt={196} />
+                </>
+              ),
+            },
+          ]}
+        />
+        <SideChip frame={f} at={46} until={116} x={24} y={1560} icon={<Icon name="pin" size={32} color="#fff" stroke={2.2} />} text={copy.promo.nearbyChip} />
+      </PanGroup>
     </AbsoluteFill>
   );
 };
@@ -419,32 +374,13 @@ const R1Find: React.FC<{ copy: Copy }> = ({ copy }) => {
 const R2Dates: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
-  const pan = panFor(f, [[170, 9999]]);
+  const pan = panFor(f, [[124, 9999]]);
   return (
     <AbsoluteFill>
       <LightBg />
       <StepHead frame={f} step={ex.step(2)} title={ex.r2.title} sub={ex.r2.sub} pan={pan} />
       <PanGroup pan={pan}>
-        <StepPhone
-          frame={f}
-          screens={[
-            {
-              from: 0,
-              node: (
-                <>
-                  <ProductPage copy={copy} frame={f + 90} bookTapAt={22} />
-                  <CalendarSheet copy={copy} frame={f} at={32} startTap={70} endTap={100} bookTap={196} />
-                </>
-              ),
-            },
-          ]}
-        />
-        <Callout frame={f} at={116} x={40} y={880}>
-          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 38, color: muted }}>
-            {`${(copy.products[0].price / 1000).toFixed(0)} 000 × ${copy.days(3)}`}
-          </div>
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 58, color: colors.primary, letterSpacing: '-0.02em' }}>= 750 000 {copy.currency}</div>
-        </Callout>
+        <StepPhone frame={f} screens={[{ from: 0, node: <DatePickerR copy={copy} frame={f} startTap={40} endTap={66} bookTap={150} /> }]} />
       </PanGroup>
     </AbsoluteFill>
   );
@@ -453,45 +389,63 @@ const R2Dates: React.FC<{ copy: Copy }> = ({ copy }) => {
 const R3Pay: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
-  const pan = panFor(f, [[58, 114]]);
+  const pan = panFor(f, [[40, 196]]);
   return (
     <AbsoluteFill>
       <LightBg />
       <StepHead frame={f} step={ex.step(3)} title={ex.r3.title} sub={ex.r3.sub} pan={pan} />
       <PanGroup pan={pan}>
-        <StepPhone frame={f} screens={[{ from: 0, node: <PaymentScreen copy={copy} frame={f} checkAt={46} payAt={76} doneAt={96} /> }]} />
+        <StepPhone frame={f} screens={[{ from: 0, node: <PaymentR copy={copy} frame={f} payTap={58} sheetAt={66} checkTap={128} confirmTap={158} doneAt={168} /> }]} />
       </PanGroup>
-      <Banner frame={f} at={132} title={copy.ui.bookingConfirmedTitle} body={copy.ui.bookingConfirmedBody} time={copy.ui.now} pan={pan} />
     </AbsoluteFill>
   );
 };
 
-const R4Pickup: React.FC<{ copy: Copy }> = ({ copy }) => {
+const R4Address: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
-  const pan = panFor(f, [[64, 112]]);
   return (
     <AbsoluteFill>
       <LightBg />
-      <StepHead frame={f} step={ex.step(4)} title={ex.r4.title} sub={ex.r4.sub} pan={pan} />
+      <StepHead frame={f} step={ex.step(4)} title={ex.r4.title} sub={ex.r4.sub} />
+      <StepPhone frame={f} screens={[{ from: 0, node: <ItemPageR copy={copy} frame={f} booked={false} switchAt={92} /> }]} />
+      <SideChip frame={f} at={24} until={88} x={24} y={1640} tone={palette.violet[60]} icon={<Icon name="map" size={30} color="#fff" stroke={2} />} text={copy.promo.before} />
+      <SideChip frame={f} at={98} x={24} y={1680} tone={colors.critical} icon={<Icon name="pin" size={32} color="#fff" stroke={2.2} />} text={copy.promo.after} />
+    </AbsoluteFill>
+  );
+};
+
+const R5Photos: React.FC<{ copy: Copy }> = ({ copy }) => {
+  const f = useCurrentFrame();
+  const ex = copy.explainer;
+  const pan = panFor(f, [[70, 138]]);
+  return (
+    <AbsoluteFill>
+      <LightBg />
+      <StepHead frame={f} step={ex.step(5)} title={ex.r5.title} sub={ex.r5.sub} pan={pan} />
+      <PanGroup pan={pan}>
+        <StepPhone frame={f} screens={[{ from: 0, node: <PickupR copy={copy} frame={f} shots={[28, 42, 56]} acceptAt={90} /> }]} />
+      </PanGroup>
+    </AbsoluteFill>
+  );
+};
+
+// ------------------------------------------------------------------ owner steps
+const O1Listing: React.FC<{ copy: Copy }> = ({ copy }) => {
+  const f = useCurrentFrame();
+  const ex = copy.explainer;
+  const pan = panFor(f, [[184, 9999]]);
+  return (
+    <AbsoluteFill>
+      <NavyBg />
+      <StepHead frame={f} step={ex.step(1)} title={ex.o1.title} sub={ex.o1.sub} dark pan={pan} />
       <PanGroup pan={pan}>
         <StepPhone
           frame={f}
+          rises
           screens={[
-            {
-              from: 0,
-              node: (
-                <>
-                  <PhotoScreen copy={copy} frame={f} shots={[28, 42, 56]} acceptAt={80} />
-                  {f >= 88 && (
-                    <div style={{ position: 'absolute', inset: 0, opacity: progress(f, 88, 8) }}>
-                      <SuccessToast copy={copy} />
-                    </div>
-                  )}
-                </>
-              ),
-            },
-            { from: 122, node: <StatusScreen copy={copy} frame={f} at={130} stepEvery={16} rateAt={196} /> },
+            { from: 0, node: <RenterProfileR copy={copy} frame={f} tapAt={42} /> },
+            { from: 56, node: <NewListingR copy={copy} frame={f} nameAt={78} addrAt={132} nextAt={206} /> },
           ]}
         />
       </PanGroup>
@@ -499,32 +453,10 @@ const R4Pickup: React.FC<{ copy: Copy }> = ({ copy }) => {
   );
 };
 
-const SuccessToast: React.FC<{ copy: Copy }> = ({ copy }) => (
-  <div style={{ position: 'absolute', left: 20, right: 20, top: 66, padding: '14px 16px', borderRadius: 16, background: palette.gray[100], display: 'flex', alignItems: 'center', gap: 10, zIndex: 50 }}>
-    <div style={{ width: 26, height: 26, borderRadius: 13, background: colors.success, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name="check" size={16} color="#fff" stroke={3} />
-    </div>
-    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 15, color: '#fff' }}>{copy.ui.pickupSuccess}</div>
-  </div>
-);
-
-// ------------------------------------------------------------------ owner steps
-const O1MyId: React.FC<{ copy: Copy }> = ({ copy }) => {
+const O2Order: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
-  return (
-    <AbsoluteFill>
-      <NavyBg />
-      <StepHead frame={f} step={ex.step(1)} title={ex.o1.title} sub={ex.o1.sub} dark />
-      <StepPhone frame={f} rises dark screenBg="#0B0F1A" screens={[{ from: 0, node: <MyIdScreen copy={copy} frame={f} scanAt={24} doneAt={100} /> }]} />
-    </AbsoluteFill>
-  );
-};
-
-const O2Listing: React.FC<{ copy: Copy }> = ({ copy }) => {
-  const f = useCurrentFrame();
-  const ex = copy.explainer;
-  const pan = panFor(f, [[128, 186]]);
+  const pan = panFor(f, [[160, 9999]]);
   return (
     <AbsoluteFill>
       <NavyBg />
@@ -533,60 +465,29 @@ const O2Listing: React.FC<{ copy: Copy }> = ({ copy }) => {
         <StepPhone
           frame={f}
           screens={[
-            {
-              from: 0,
-              node: <ListingScreen copy={copy} frame={f} photosAt={24} nameAt={48} priceAt={84} placeAt={106} publishAt={146} sentAt={156} />,
-            },
+            { from: 0, node: <NotificationsR copy={copy} frame={f} newAt={12} tapAt={52} /> },
+            { from: 62, node: <OrderR copy={copy} frame={f} handTap={182} doneAt={192} /> },
           ]}
         />
       </PanGroup>
-      <Banner frame={f} at={200} title={copy.ui.approvedTitle} body={copy.ui.approvedBody} time={copy.ui.now} pan={pan} />
     </AbsoluteFill>
   );
 };
 
-const O3Accept: React.FC<{ copy: Copy }> = ({ copy }) => {
+const O3Earn: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const ex = copy.explainer;
-  const pan = panFor(f, [[92, 148]]);
   return (
     <AbsoluteFill>
       <NavyBg />
-      <StepHead frame={f} step={ex.step(3)} title={ex.o3.title} sub={ex.o3.sub} dark pan={pan} />
-      <PanGroup pan={pan}>
-        <StepPhone frame={f} screens={[{ from: 0, node: <OrderScreen copy={copy} frame={f} confirmAt={112} /> }]} />
-      </PanGroup>
-      <Banner frame={f} at={10} until={56} title={copy.ui.newRequestTitle} body={copy.ui.newRequestBody} time={copy.ui.now} />
-      <Tap x={540} y={740} at={42} size={110} />
-    </AbsoluteFill>
-  );
-};
-
-const O4Earn: React.FC<{ copy: Copy }> = ({ copy }) => {
-  const f = useCurrentFrame();
-  const ex = copy.explainer;
-  const pan = panFor(f, [[156, 226]]);
-  return (
-    <AbsoluteFill>
-      <NavyBg />
-      <StepHead frame={f} step={ex.step(4)} title={ex.o4.title} sub={ex.o4.sub} dark pan={pan} />
-      <PanGroup pan={pan}>
-        <StepPhone
-          frame={f}
-          screens={[{ from: 0, node: <OwnerHome copy={copy} frame={f} countAt={18} withdrawTap={112} sheetAt={120} confirmTap={176} doneAt={186} /> }]}
-        />
-        <Callout frame={f} at={64} until={104} x={40} y={1250}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 70, height: 70, borderRadius: 35, background: palette.green[0], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="wallet" size={38} color={palette.green[60]} stroke={2.2} />
-            </div>
-            <div>
-              <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 30, color: muted }}>{copy.ui.rentalIncome}</div>
-              <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 48, color: palette.green[60] }}>+675 000</div>
-            </div>
-          </div>
-        </Callout>
-      </PanGroup>
+      <StepHead frame={f} step={ex.step(3)} title={ex.o3.title} sub={ex.o3.sub} dark />
+      <StepPhone
+        frame={f}
+        screens={[
+          { from: 0, node: <DashboardR copy={copy} frame={f} countAt={16} /> },
+          { from: 118, node: <OwnerProfileR copy={copy} frame={f} withdrawTap={160} doneAt={172} /> },
+        ]}
+      />
     </AbsoluteFill>
   );
 };
@@ -594,8 +495,8 @@ const O4Earn: React.FC<{ copy: Copy }> = ({ copy }) => {
 // ------------------------------------------------------------------ trust recap
 const TrustRecap: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
-  const icons = ['wallet', 'id', 'camera', 'shield'] as const;
-  const tones = [palette.green[60], palette.violet[60], palette.orange[60], palette.primary[70]];
+  const icons = ['id', 'pin', 'camera', 'shield'] as const;
+  const tones = [palette.primary[60], palette.violet[60], palette.orange[60], palette.green[60]];
   const hero = pop(f, 70, 14, 120);
   return (
     <AbsoluteFill>
@@ -628,11 +529,10 @@ const seq = (from: number, to: number) => ({ from, durationInFrames: to - from }
 
 export const Explainer: React.FC<{ lang: string }> = ({ lang }) => {
   const copy = COPIES[lang];
-  const typing = Array.from({ length: copy.ui.searchQuery.length }, (_, i) => 360 + 52 + i * 4);
-  const nameTyping = Array.from({ length: 10 }, (_, i) => 1500 + 48 + i * 3);
+  const at = (sceneStart: number, local: number) => sceneStart + local;
   return (
     <AbsoluteFill style={{ background: palette.primary[100] }}>
-      <Music file="music-explainer.wav" volume={0.64} />
+      <Music file="music-explainer.wav" volume={0.5} />
 
       <Sequence {...seq(0, 190)}>
         <Scene duration={190}>
@@ -644,157 +544,153 @@ export const Explainer: React.FC<{ lang: string }> = ({ lang }) => {
           <TwoSides copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(300, 370)}>
+      <Sequence {...seq(300, 430)}>
+        <Scene duration={130} enter="slideUp" enterFrames={10}>
+          <MyIdStep copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence {...seq(420, 490)}>
         <Scene duration={70} enter="circle" enterFrames={10}>
           <Chapter copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(360, 610)}>
+      <Sequence {...seq(480, 730)}>
         <Scene duration={250} enter="slideUp" enterFrames={10} exit="pushLeft" exitFrames={10}>
           <R1Find copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(600, 850)}>
-        <Scene duration={250} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
+      <Sequence {...seq(720, 910)}>
+        <Scene duration={190} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
           <R2Dates copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(840, 1030)}>
-        <Scene duration={190} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
+      <Sequence {...seq(900, 1150)}>
+        <Scene duration={250} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
           <R3Pay copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(1020, 1260)}>
-        <Scene duration={240} enter="pushLeft" enterFrames={10} exit="flipOut" exitFrames={8}>
-          <R4Pickup copy={copy} />
+      <Sequence {...seq(1140, 1330)}>
+        <Scene duration={190} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
+          <R4Address copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(1260, 1330)}>
+      <Sequence {...seq(1320, 1500)}>
+        <Scene duration={180} enter="pushLeft" enterFrames={10} exit="flipOut" exitFrames={8}>
+          <R5Photos copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence {...seq(1500, 1570)}>
         <Scene duration={70} enter="flipIn" enterFrames={10}>
           <Chapter copy={copy} owner />
         </Scene>
       </Sequence>
-      <Sequence {...seq(1320, 1510)}>
-        <Scene duration={190} enter="slideUp" enterFrames={10} exit="pushLeft" exitFrames={10}>
-          <O1MyId copy={copy} />
+      <Sequence {...seq(1560, 1810)}>
+        <Scene duration={250} enter="slideUp" enterFrames={10} exit="pushLeft" exitFrames={10}>
+          <O1Listing copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(1500, 1750)}>
+      <Sequence {...seq(1800, 2050)}>
         <Scene duration={250} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
-          <O2Listing copy={copy} />
+          <O2Order copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(1740, 1930)}>
-        <Scene duration={190} enter="pushLeft" enterFrames={10} exit="pushLeft" exitFrames={10}>
-          <O3Accept copy={copy} />
-        </Scene>
-      </Sequence>
-      <Sequence {...seq(1920, 2170)}>
+      <Sequence {...seq(2040, 2290)}>
         <Scene duration={250} enter="pushLeft" enterFrames={10}>
-          <O4Earn copy={copy} />
+          <O3Earn copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(2160, 2350)}>
+      <Sequence {...seq(2280, 2470)}>
         <Scene duration={190} enter="circle" enterFrames={10}>
           <TrustRecap copy={copy} />
         </Scene>
       </Sequence>
-      <Sequence {...seq(2340, EXPLAINER_FRAMES)}>
-        <Scene duration={EXPLAINER_FRAMES - 2340} enter="circle" enterFrames={10}>
-          <Cta copy={copy} speed={1.15} tagAt={84} pillAt={118} bioAt={128} />
+      <Sequence {...seq(2460, EXPLAINER_FRAMES)}>
+        <Scene duration={EXPLAINER_FRAMES - 2460} enter="circle" enterFrames={10}>
+          <Cta copy={copy} speed={1.15} tagAt={70} badgesAt={82} urlAt={96} />
         </Scene>
       </Sequence>
 
       {/* ---- sound design (absolute frames) ---- */}
-      <Sfx name="whoosh" at={44} volume={0.3} />
-      <Sfx name="pop" at={92} volume={0.25} />
-      {[96, 100, 104, 108].map((at) => (
-        <Sfx key={`i${at}`} name="pop" at={at} volume={0.18} />
+      <Sfx name="whoosh" at={30} volume={0.25} />
+      <Sfx name="pop" at={62} volume={0.22} />
+      {[66, 70, 74, 78].map((t) => (
+        <Sfx key={`i${t}`} name="pop" at={t} volume={0.16} />
       ))}
-      <Sfx name="pop" at={120} volume={0.3} />
-      <Sfx name="whoosh" at={178} volume={0.35} />
-      <Sfx name="whoosh" at={200} volume={0.3} />
-      <Sfx name="whoosh" at={298} volume={0.35} />
-      <Sfx name="whoosh" at={358} volume={0.3} />
-      {/* renter step 1 */}
-      <Sfx name="tap" at={396} volume={0.5} />
-      {typing.map((at) => (
-        <Sfx key={`ty${at}`} name="type" at={at} volume={0.35} />
+      <Sfx name="pop" at={86} volume={0.26} />
+      <Sfx name="whoosh" at={178} volume={0.3} />
+      <Sfx name="whoosh" at={200} volume={0.25} />
+      {/* MyID */}
+      <Sfx name="whoosh" at={298} volume={0.3} />
+      <Sfx name="riser" at={at(300, 22)} volume={0.2} />
+      <Sfx name="success" at={at(300, 86)} volume={0.4} />
+      <Sfx name="pop" at={at(300, 94)} volume={0.28} />
+      <Sfx name="pop" at={at(300, 100)} volume={0.28} />
+      <Sfx name="whoosh" at={418} volume={0.3} />
+      {/* R1 */}
+      <Sfx name="whoosh" at={478} volume={0.25} />
+      <Sfx name="pop" at={at(480, 40)} volume={0.3} />
+      <Sfx name="swipe" at={at(480, 64)} volume={0.28} />
+      <Sfx name="whoosh" at={at(480, 124)} volume={0.22} />
+      <Sfx name="tap" at={at(480, 146)} volume={0.45} />
+      <Sfx name="type" at={at(480, 152)} volume={0.35} />
+      <Sfx name="tap" at={at(480, 196)} volume={0.45} />
+      {/* R2 */}
+      <Sfx name="swipe" at={718} volume={0.28} />
+      <Sfx name="tap" at={at(720, 40)} volume={0.45} />
+      <Sfx name="tap" at={at(720, 66)} volume={0.45} />
+      <Sfx name="tap" at={at(720, 150)} volume={0.45} />
+      {/* R3 */}
+      <Sfx name="swipe" at={898} volume={0.28} />
+      <Sfx name="tap" at={at(900, 58)} volume={0.45} />
+      <Sfx name="whoosh" at={at(900, 66)} volume={0.22} />
+      <Sfx name="tap" at={at(900, 128)} volume={0.45} />
+      <Sfx name="tap" at={at(900, 158)} volume={0.45} />
+      <Sfx name="success" at={at(900, 168)} volume={0.4} />
+      {/* R4 */}
+      <Sfx name="swipe" at={1138} volume={0.28} />
+      <Sfx name="pop" at={at(1140, 24)} volume={0.3} />
+      <Sfx name="whoosh" at={at(1140, 90)} volume={0.25} />
+      <Sfx name="pop" at={at(1140, 100)} volume={0.35} />
+      {/* R5 */}
+      <Sfx name="swipe" at={1318} volume={0.28} />
+      {[28, 42, 56].map((t) => (
+        <Sfx key={`sh${t}`} name="shutter" at={at(1320, t)} volume={0.5} />
       ))}
-      <Sfx name="pop" at={448} volume={0.3} />
-      <Sfx name="pop" at={460} volume={0.3} />
-      <Sfx name="tap" at={502} volume={0.5} />
-      <Sfx name="swipe" at={512} volume={0.35} />
-      {/* renter step 2 */}
-      <Sfx name="swipe" at={598} volume={0.3} />
-      <Sfx name="tap" at={622} volume={0.5} />
-      <Sfx name="whoosh" at={632} volume={0.25} />
-      <Sfx name="tap" at={670} volume={0.5} />
-      <Sfx name="tap" at={700} volume={0.5} />
-      <Sfx name="pop" at={716} volume={0.3} />
-      <Sfx name="tap" at={796} volume={0.5} />
-      {/* renter step 3 */}
-      <Sfx name="swipe" at={838} volume={0.3} />
-      <Sfx name="tap" at={886} volume={0.5} />
-      <Sfx name="tap" at={916} volume={0.5} />
-      <Sfx name="success" at={936} volume={0.4} />
-      <Sfx name="notify" at={968} volume={0.45} />
-      {/* renter step 4 */}
-      <Sfx name="swipe" at={1018} volume={0.3} />
-      {[1048, 1062, 1076].map((at) => (
-        <Sfx key={`sh${at}`} name="shutter" at={at} volume={0.5} />
-      ))}
-      <Sfx name="tap" at={1100} volume={0.5} />
-      <Sfx name="success" at={1108} volume={0.35} />
-      <Sfx name="swipe" at={1142} volume={0.3} />
-      {[1150, 1166, 1182, 1198].map((at) => (
-        <Sfx key={`st${at}`} name="pop" at={at} volume={0.3} />
-      ))}
-      <Sfx name="coins" at={1218} volume={0.3} />
+      <Sfx name="tap" at={at(1320, 90)} volume={0.45} />
+      <Sfx name="success" at={at(1320, 98)} volume={0.35} />
       {/* owner chapter */}
-      <Sfx name="flip" at={1252} volume={0.5} />
-      <Sfx name="pop" at={1264} volume={0.3} />
-      <Sfx name="whoosh" at={1318} volume={0.3} />
-      <Sfx name="riser" at={1344} volume={0.25} />
-      <Sfx name="success" at={1420} volume={0.45} />
-      {/* owner step 2 */}
-      <Sfx name="swipe" at={1498} volume={0.3} />
-      {[1524, 1530, 1536].map((at) => (
-        <Sfx key={`ph${at}`} name="pop" at={at} volume={0.3} />
+      <Sfx name="flip" at={1492} volume={0.45} />
+      <Sfx name="pop" at={1506} volume={0.28} />
+      <Sfx name="whoosh" at={1558} volume={0.28} />
+      <Sfx name="tap" at={at(1560, 42)} volume={0.45} />
+      <Sfx name="swipe" at={at(1560, 56)} volume={0.25} />
+      {Array.from({ length: 9 }, (_, i) => at(1560, 78 + i * 3)).map((t) => (
+        <Sfx key={`ty${t}`} name="type" at={t} volume={0.28} />
       ))}
-      {nameTyping.map((at) => (
-        <Sfx key={`nt${at}`} name="type" at={at} volume={0.3} />
+      {Array.from({ length: 6 }, (_, i) => at(1560, 132 + i * 3)).map((t) => (
+        <Sfx key={`ta${t}`} name="type" at={t} volume={0.28} />
       ))}
-      {[1584, 1588, 1592, 1596].map((at) => (
-        <Sfx key={`pt${at}`} name="type" at={at} volume={0.3} />
-      ))}
-      <Sfx name="pop" at={1610} volume={0.35} />
-      <Sfx name="tap" at={1646} volume={0.5} />
-      <Sfx name="success" at={1656} volume={0.4} />
-      <Sfx name="notify" at={1696} volume={0.45} />
-      {/* owner step 3 */}
-      <Sfx name="swipe" at={1738} volume={0.3} />
-      <Sfx name="notify" at={1750} volume={0.45} />
-      <Sfx name="tap" at={1782} volume={0.5} />
-      <Sfx name="tap" at={1852} volume={0.5} />
-      <Sfx name="success" at={1858} volume={0.4} />
-      {/* owner step 4 */}
-      <Sfx name="swipe" at={1918} volume={0.3} />
-      <Sfx name="coins" at={1938} volume={0.4} />
-      <Sfx name="pop" at={1984} volume={0.3} />
-      <Sfx name="tap" at={2032} volume={0.5} />
-      <Sfx name="whoosh" at={2040} volume={0.25} />
-      <Sfx name="tap" at={2096} volume={0.5} />
-      <Sfx name="success" at={2106} volume={0.45} />
+      <Sfx name="tap" at={at(1560, 206)} volume={0.45} />
+      {/* O2 */}
+      <Sfx name="swipe" at={1798} volume={0.28} />
+      <Sfx name="notify" at={at(1800, 12)} volume={0.45} />
+      <Sfx name="tap" at={at(1800, 52)} volume={0.45} />
+      <Sfx name="swipe" at={at(1800, 62)} volume={0.25} />
+      <Sfx name="tap" at={at(1800, 182)} volume={0.45} />
+      <Sfx name="success" at={at(1800, 192)} volume={0.4} />
+      {/* O3 */}
+      <Sfx name="swipe" at={2038} volume={0.28} />
+      <Sfx name="coins" at={at(2040, 16)} volume={0.35} />
+      <Sfx name="swipe" at={at(2040, 118)} volume={0.25} />
+      <Sfx name="tap" at={at(2040, 160)} volume={0.45} />
+      <Sfx name="success" at={at(2040, 172)} volume={0.45} />
       {/* trust + CTA */}
-      <Sfx name="whoosh" at={2158} volume={0.35} />
-      {[2186, 2201, 2216, 2231].map((at) => (
-        <Sfx key={`tr${at}`} name="pop" at={at} volume={0.32} />
+      <Sfx name="whoosh" at={2278} volume={0.3} />
+      {[2306, 2321, 2336, 2351].map((t) => (
+        <Sfx key={`tr${t}`} name="pop" at={t} volume={0.3} />
       ))}
-      <Sfx name="whoosh" at={2338} volume={0.35} />
-      <Sfx name="impact" at={2342} volume={0.35} />
-      <Sfx name="success" at={2458} volume={0.4} />
+      <Sfx name="whoosh" at={2458} volume={0.3} />
+      <Sfx name="logo" at={2505} volume={0.6} />
     </AbsoluteFill>
   );
 };
-

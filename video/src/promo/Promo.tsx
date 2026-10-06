@@ -1,30 +1,30 @@
 /**
- * Promo Reel — 25 s, 1080×1920. Seven beats cut on the bar lines of
- * music-promo.wav (120 BPM, 60 frames per bar):
+ * Promo Reel — 25 s, 1080×1920, cut on the bar lines of music-promo.wav
+ * (120 BPM, 60 frames per bar):
  *
- *   0  hook        "Нужна вещь на пару дней?"
- *   60 drop        "Не покупайте — арендуйте!"
- *  180 home        everything you need, from people nearby (phone)
- *  300 map         find it close to you
- *  420 trust       no deposit / secure payment / MyID
- *  540 owner       flip → rent your things out and earn
- *  660 CTA         logo reveal, rentzor.uz
+ *    0  hook       "Нужна вещь на пару дней?"
+ *   60  drop       "Не покупайте — арендуйте!"
+ *  180  nearby     home screen — distance on every card
+ *  300  address    approximate area before booking → exact place after
+ *  420  trust      everyone verified via MyID, photos, compensation
+ *  540  owner      flip → rent things out, owner dashboard
+ *  660  CTA        logo + sound logo, App Store / Google Play, rentzor.uz
  */
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, Sequence, useCurrentFrame } from 'remotion';
-import { bob, countUp, easeOut, groupDigits, pop, progress } from '../anim';
-import { icon3d, img, productImage } from '../assets';
-import { colors, FONT, ink, muted, palette, yellow } from '../brand';
+import { bob, easeOut, pop, progress } from '../anim';
+import { icon3d, img } from '../assets';
+import { colors, FONT, ink, palette, yellow } from '../brand';
 import { COPIES } from '../copy';
 import type { Copy } from '../copy/types';
-import { BalanceCardUI, NotificationUI } from '../components/AppUI';
-import { Cta } from '../components/Cta';
-import { HomeScreen } from '../components/Screens';
+import { NotificationUI } from '../components/AppUI';
 import { BlueBg, LightBg, NavyBg } from '../components/Backgrounds';
-import { CheckRow, PhotoPin, Scaled, Tile3D, UserDot } from '../components/Bits';
+import { CheckRow, Tile3D } from '../components/Bits';
+import { Cta } from '../components/Cta';
 import { Icon } from '../components/Icon';
 import { KineticText } from '../components/KineticText';
-import { Phone, phoneSize } from '../components/Phone';
+import { Phone } from '../components/Phone';
+import { DashboardR, HomeR, ItemPageR } from '../components/Real';
 import { Music, Scene, Sfx } from '../components/Scene';
 
 export const PROMO_FRAMES = 750;
@@ -117,111 +117,131 @@ const RentNotBuy: React.FC<{ copy: Copy }> = ({ copy }) => {
   );
 };
 
-// ------------------------------------------------------------------ 3. everything nearby (home screen)
+// ------------------------------------------------------------------ shared
+/** Label chip that sits next to the phone. */
+export const SideChip: React.FC<{ frame: number; at: number; until?: number; x: number; y: number; icon: React.ReactNode; text: string; tone?: string }> = ({
+  frame,
+  at,
+  until,
+  x,
+  y,
+  icon,
+  text,
+  tone = colors.primary,
+}) => {
+  const s = pop(frame, at, 13, 170) * (until === undefined ? 1 : 1 - progress(frame, until, 8));
+  if (s <= 0.001) return null;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y + bob(frame, 6, 90, at),
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '20px 28px 20px 20px',
+        borderRadius: 999,
+        background: '#FFFFFF',
+        boxShadow: '0 30px 60px -22px rgba(15,23,42,0.45), 0 6px 14px rgba(15,23,42,0.08)',
+        transform: `scale(${s})`,
+        transformOrigin: 'left center',
+        zIndex: 30,
+      }}
+    >
+      <div style={{ width: 58, height: 58, borderRadius: 29, background: tone, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
+      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 38, color: ink, whiteSpace: 'nowrap' }}>{text}</div>
+    </div>
+  );
+};
+
+const PW = 640;
+
+// ------------------------------------------------------------------ 3. nearby (distance on cards)
 const Nearby: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
   const rise = pop(f, 4, 16, 110);
-  const pw = 640;
-  const { height } = phoneSize(pw);
-  const side = [
-    { name: 'camera2', x: 128, y: 820, r: -10 },
-    { name: 'headphones', x: 952, y: 760, r: 8 },
-    { name: 'dumbbells', x: 110, y: 1130, r: 6 },
-    { name: 'gopro', x: 968, y: 1080, r: -6 },
-    { name: 'backpack', x: 140, y: 1440, r: -5 },
-    { name: 'kayak', x: 950, y: 1400, r: 7 },
-  ] as const;
   return (
     <AbsoluteFill>
       <LightBg />
       <div style={{ position: 'absolute', top: 240, left: 0, right: 0 }}>
-        <KineticText lines={copy.promo.nearby} frame={f} start={6} size={92} hl={colors.primary} />
+        <KineticText lines={copy.promo.nearby} frame={f} start={6} size={96} hl={colors.primary} />
       </div>
-      {side.slice(0, 3).map((t, i) => (
-        <Tile3D key={t.name} src={icon3d(t.name)} frame={f} at={22 + i * 7} x={t.x} y={t.y} rotate={t.r} size={150} phase={i * 17} />
-      ))}
-      <Phone width={pw} style={{ left: (1080 - pw) / 2, top: 560 + (1 - rise) * 900 }}>
-        <HomeScreen copy={copy} frame={f} />
+      <Tile3D src={icon3d('camera2')} frame={f} at={24} x={120} y={760} rotate={-9} size={150} />
+      <Tile3D src={icon3d('headphones')} frame={f} at={30} x={960} y={720} rotate={8} size={150} />
+      <Phone width={PW} style={{ left: (1080 - PW) / 2, top: 540 + (1 - rise) * 900 }}>
+        <HomeR copy={copy} frame={f} highlightAt={36} scrollAt={78} />
       </Phone>
-      {side.slice(3).map((t, i) => (
-        <Tile3D key={t.name} src={icon3d(t.name)} frame={f} at={25 + i * 7} x={t.x} y={t.y} rotate={t.r} size={150} phase={i * 23} />
-      ))}
-      {/* keep the phone's lower edge from reading as cut-off */}
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 560 + height - 120, height: 200, background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, #FFFFFF 70%)' }} />
+      <SideChip frame={f} at={40} x={30} y={1520} icon={<Icon name="pin" size={32} color="#fff" stroke={2.2} />} text={copy.promo.nearbyChip} />
     </AbsoluteFill>
   );
 };
 
-// ------------------------------------------------------------------ 4. map
-const MapNearby: React.FC<{ copy: Copy }> = ({ copy }) => {
+// ------------------------------------------------------------------ 4. approximate → exact address
+const Address: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
-  const zoom = interpolate(f, [0, 130], [1.08, 1.0]);
-  const radius = progress(f, 8, 30) * 400;
-  const pins = [
-    { p: copy.products[0], x: 300, y: 1000, at: 24 },
-    { p: copy.products[1], x: 800, y: 1060, at: 39 },
-    { p: copy.products[2], x: 330, y: 1480, at: 54 },
-    { p: copy.products[3], x: 790, y: 1470, at: 69 },
-  ];
   return (
-    <AbsoluteFill style={{ background: '#F4F1EC' }}>
-      <AbsoluteFill style={{ transform: `scale(${zoom})` }}>
-        <Img src={img.mapTiles} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      </AbsoluteFill>
-      <AbsoluteFill
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 22%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 82%, rgba(255,255,255,0.55) 100%)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          left: 540 - radius,
-          top: 1230 - radius,
-          width: radius * 2,
-          height: radius * 2,
-          borderRadius: '50%',
-          background: 'rgba(60,131,246,0.12)',
-          border: '3px solid rgba(60,131,246,0.45)',
-        }}
-      />
-      <UserDot frame={f} x={540} y={1230} at={4} />
-      {pins.map(({ p, x, y, at }) => (
-        <PhotoPin key={p.key} src={productImage[p.key]} label={p.distance} frame={f} at={at} x={x} y={y} />
-      ))}
+    <AbsoluteFill>
+      <LightBg />
       <div style={{ position: 'absolute', top: 240, left: 0, right: 0 }}>
-        <KineticText lines={copy.promo.map} frame={f} start={4} size={92} hl={colors.primary} />
+        <KineticText lines={copy.promo.address} frame={f} start={4} size={92} hl={colors.primary} />
       </div>
+      <Phone width={PW} style={{ left: (1080 - PW) / 2, top: 540 }}>
+        <ItemPageR copy={copy} frame={f} booked={false} switchAt={58} />
+      </Phone>
+      <SideChip frame={f} at={14} until={56} x={30} y={1590} tone={palette.violet[60]} icon={<Icon name="map" size={30} color="#fff" stroke={2} />} text={copy.promo.before} />
+      <SideChip frame={f} at={62} x={30} y={1630} tone={colors.critical} icon={<Icon name="pin" size={32} color="#fff" stroke={2.2} />} text={copy.promo.after} />
     </AbsoluteFill>
   );
 };
 
-// ------------------------------------------------------------------ 5. trust
+// ------------------------------------------------------------------ 5. trust: MyID for everyone
+const Person: React.FC<{ frame: number; at: number; src: string; name: string; role: string; badge: string }> = ({ frame, at, src, name, role, badge }) => {
+  const s = pop(frame, at, 13, 150);
+  return (
+    <div
+      style={{
+        width: 420,
+        padding: '34px 20px 30px',
+        borderRadius: 48,
+        background: '#fff',
+        boxShadow: '0 30px 60px -24px rgba(30,64,175,0.35)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 12,
+        transform: `translateY(${(1 - s) * 120}px) scale(${0.85 + 0.15 * s})`,
+        opacity: Math.min(1, s * 1.5),
+      }}
+    >
+      <div style={{ position: 'relative' }}>
+        <Img src={src} style={{ width: 170, height: 170, borderRadius: 85, objectFit: 'cover' }} />
+        <div style={{ position: 'absolute', right: -4, bottom: -4, width: 58, height: 58, borderRadius: 29, background: palette.primary[60], border: '6px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${pop(frame, at + 12, 10, 200)})` }}>
+          <Icon name="check" size={30} color="#fff" stroke={3.2} />
+        </div>
+      </div>
+      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 42, color: ink }}>{name}</div>
+      <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 30, color: palette.gray[50] }}>{role}</div>
+      <div style={{ padding: '8px 18px', borderRadius: 999, background: palette.primary[0], border: `2px solid ${palette.primary[10]}`, fontFamily: FONT, fontWeight: 600, fontSize: 28, color: palette.primary[60] }}>{badge}</div>
+    </div>
+  );
+};
+
 const Trust: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
-  const s = pop(f, 6, 14, 120);
   return (
     <AbsoluteFill>
       <LightBg />
       <div style={{ position: 'absolute', top: 240, left: 0, right: 0 }}>
         <KineticText lines={copy.promo.trust} frame={f} start={4} size={92} mode="marker" hl={yellow} />
       </div>
-      <Img
-        src={img.heroWallet}
-        style={{
-          position: 'absolute',
-          width: 820,
-          left: 130,
-          top: 560 + bob(f, 10, 90),
-          transform: `scale(${0.75 + 0.25 * s})`,
-          opacity: Math.min(1, s * 1.5),
-          filter: 'drop-shadow(0 40px 36px rgba(30,64,175,0.22))',
-        }}
-      />
-      <div style={{ position: 'absolute', top: 1090, left: 100, display: 'flex', flexDirection: 'column', gap: 26 }}>
-        {copy.promo.trustChips.map((c, i) => (
-          <CheckRow key={c} text={c} frame={f} at={30 + i * 15} width={880} size={40} icon={(['wallet', 'lock', 'id'] as const)[i]} tone={[palette.green[60], colors.primary, palette.violet[60]][i]} />
+      <div style={{ position: 'absolute', top: 500, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 40 }}>
+        <Person frame={f} at={10} src={img.avatarMalika} name={copy.renterName} role={copy.ui.renter} badge={copy.ui.myIdVerified} />
+        <Person frame={f} at={18} src={img.avatarDoston} name={copy.ownerName} role={copy.ui.owner} badge={copy.ui.myIdVerified} />
+      </div>
+      <div style={{ position: 'absolute', top: 1010, left: 90, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {copy.promo.trustRows.map((t, i) => (
+          <CheckRow key={t} text={t} frame={f} at={40 + i * 15} icon={(['id', 'camera', 'shield'] as const)[i]} width={900} size={38} tone={[palette.primary[60], palette.orange[60], palette.green[60]][i]} />
         ))}
       </div>
     </AbsoluteFill>
@@ -231,65 +251,23 @@ const Trust: React.FC<{ copy: Copy }> = ({ copy }) => {
 // ------------------------------------------------------------------ 6. owner
 const Owner: React.FC<{ copy: Copy }> = ({ copy }) => {
   const f = useCurrentFrame();
-  const card = pop(f, 24, 14, 140);
-  const amount = countUp(f, 34, 46, 2450000, 5000);
-  const n1 = pop(f, 50, 14, 150);
-  const n2 = pop(f, 68, 14, 150);
-  const sc = 2.35;
+  const rise = pop(f, 10, 16, 110);
+  const n = pop(f, 66, 14, 160);
+  const it = copy.nearbyItems[0];
   return (
     <AbsoluteFill>
       <NavyBg />
-      <div
-        style={{
-          position: 'absolute',
-          top: 236,
-          left: 0,
-          right: 0,
-          textAlign: 'center',
-          fontFamily: FONT,
-          fontWeight: 700,
-          fontSize: 64,
-          color: 'rgba(255,255,255,0.75)',
-          opacity: progress(f, 4, 10),
-          transform: `translateY(${(1 - progress(f, 4, 10)) * 24}px)`,
-        }}
-      >
+      <div style={{ position: 'absolute', top: 236, left: 0, right: 0, textAlign: 'center', fontFamily: FONT, fontWeight: 700, fontSize: 64, color: 'rgba(255,255,255,0.75)', opacity: progress(f, 4, 10) }}>
         {copy.promo.ownerQ}
       </div>
       <div style={{ position: 'absolute', top: 330, left: 0, right: 0 }}>
         <KineticText lines={copy.promo.owner} frame={f} start={14} size={100} color="#FFFFFF" mode="marker" hl={yellow} hlText={ink} />
       </div>
-      <Scaled scale={sc} width={353} style={{ left: (1080 - 353 * sc) / 2, top: 640, transform: `translateY(${(1 - card) * 300}px) scale(${0.85 + 0.15 * card})`, opacity: Math.min(1, card * 1.5) }}>
-        <BalanceCardUI label={copy.promo.ownerIncomeLabel} amount={`${groupDigits(amount)} ${copy.currency}`} buttons={[copy.ui.withdraw, copy.ui.topUp]} />
-      </Scaled>
-      <div style={{ position: 'absolute', left: (1080 - 361 * sc) / 2, top: 1060, transform: `translateY(${(1 - n1) * -80}px)`, opacity: Math.min(1, n1 * 1.6) }}>
-        <NotificationUI title={copy.ui.newRequestTitle} body={copy.ui.newRequestBody} time={copy.ui.now} scale={sc} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          left: (1080 - 361 * sc) / 2,
-          top: 1290,
-          width: 361 * sc,
-          padding: '30px 34px',
-          borderRadius: 56,
-          background: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 26,
-          boxShadow: '0 30px 60px -20px rgba(0,0,0,0.45)',
-          transform: `translateY(${(1 - n2) * 120}px)`,
-          opacity: Math.min(1, n2 * 1.6),
-        }}
-      >
-        <div style={{ width: 92, height: 92, borderRadius: 46, background: palette.green[0], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="wallet" size={50} color={palette.green[60]} stroke={2.2} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 38, color: ink }}>{copy.ui.rentalIncome}</div>
-          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 32, color: muted }}>{copy.products[0].title}</div>
-        </div>
-        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 42, color: palette.green[60], whiteSpace: 'nowrap' }}>+{groupDigits(675000)}</div>
+      <Phone width={600} style={{ left: 240, top: 640 + (1 - rise) * 1000 }}>
+        <DashboardR copy={copy} frame={f} countAt={26} />
+      </Phone>
+      <div style={{ position: 'absolute', left: (1080 - 361 * 2.3) / 2, top: 600 + (1 - n) * -200, opacity: Math.min(1, n * 1.5), zIndex: 40 }}>
+        <NotificationUI title={copy.ui.newRequestTitle} body={`${copy.ui.newRequestPrefix} «${it.title}»`} time={copy.ui.justNow} scale={2.3} />
       </div>
     </AbsoluteFill>
   );
@@ -299,71 +277,73 @@ const Owner: React.FC<{ copy: Copy }> = ({ copy }) => {
 export const Promo: React.FC<{ lang: string }> = ({ lang }) => {
   const copy = COPIES[lang];
   return (
-  <AbsoluteFill style={{ background: palette.primary[100] }}>
-    <Music file="music-promo.wav" volume={0.62} />
+    <AbsoluteFill style={{ background: palette.primary[100] }}>
+      <Music file="music-promo.wav" volume={0.55} />
 
-    <Sequence from={0} durationInFrames={62}>
-      <Scene duration={62}>
-        <Hook copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={52} durationInFrames={138}>
-      <Scene duration={138} enter="circle" enterFrames={8}>
-        <RentNotBuy copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={180} durationInFrames={130}>
-      <Scene duration={130} enter="slideUp" enterFrames={10}>
-        <Nearby copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={300} durationInFrames={130}>
-      <Scene duration={130} enter="zoomIn" enterFrames={10}>
-        <MapNearby copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={420} durationInFrames={120}>
-      <Scene duration={120} enter="circle" enterFrames={10} origin={[540, 1230]} exit="flipOut" exitFrames={8}>
-        <Trust copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={540} durationInFrames={130}>
-      <Scene duration={130} enter="flipIn" enterFrames={10}>
-        <Owner copy={copy} />
-      </Scene>
-    </Sequence>
-    <Sequence from={660} durationInFrames={90}>
-      <Scene duration={90} enter="circle" enterFrames={10}>
-        <Cta copy={copy} />
-      </Scene>
-    </Sequence>
+      <Sequence from={0} durationInFrames={62}>
+        <Scene duration={62}>
+          <Hook copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={52} durationInFrames={138}>
+        <Scene duration={138} enter="circle" enterFrames={8}>
+          <RentNotBuy copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={180} durationInFrames={130}>
+        <Scene duration={130} enter="slideUp" enterFrames={10} exit="pushLeft" exitFrames={10}>
+          <Nearby copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={300} durationInFrames={130}>
+        <Scene duration={130} enter="pushLeft" enterFrames={10}>
+          <Address copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={420} durationInFrames={120}>
+        <Scene duration={120} enter="circle" enterFrames={10} exit="flipOut" exitFrames={8}>
+          <Trust copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={540} durationInFrames={130}>
+        <Scene duration={130} enter="flipIn" enterFrames={10}>
+          <Owner copy={copy} />
+        </Scene>
+      </Sequence>
+      <Sequence from={660} durationInFrames={90}>
+        <Scene duration={90} enter="circle" enterFrames={10}>
+          <Cta copy={copy} />
+        </Scene>
+      </Sequence>
 
-    {/* sound design (absolute frames) */}
-    {[4, 8, 12, 16, 20, 24].map((at) => (
-      <Sfx key={`p${at}`} name="pop" at={at} volume={0.22} />
-    ))}
-    <Sfx name="whoosh" at={46} volume={0.45} />
-    <Sfx name="impact" at={60} volume={0.55} />
-    <Sfx name="whoosh" at={84} volume={0.35} />
-    <Sfx name="pop" at={115} volume={0.3} />
-    <Sfx name="whoosh" at={178} volume={0.4} />
-    <Sfx name="swipe" at={224} volume={0.35} />
-    <Sfx name="whoosh" at={298} volume={0.35} />
-    {[324, 339, 354, 369].map((at) => (
-      <Sfx key={`m${at}`} name="pop" at={at} volume={0.35} />
-    ))}
-    <Sfx name="whoosh" at={418} volume={0.35} />
-    {[450, 465, 480].map((at) => (
-      <Sfx key={`t${at}`} name="pop" at={at} volume={0.32} />
-    ))}
-    <Sfx name="success" at={482} volume={0.35} />
-    <Sfx name="flip" at={532} volume={0.5} />
-    <Sfx name="coins" at={574} volume={0.4} />
-    <Sfx name="notify" at={590} volume={0.45} />
-    <Sfx name="pop" at={608} volume={0.3} />
-    <Sfx name="whoosh" at={656} volume={0.35} />
-    <Sfx name="impact" at={662} volume={0.35} />
-    <Sfx name="success" at={718} volume={0.4} />
-  </AbsoluteFill>
+      {/* sound design (absolute frames) */}
+      {[0, 3, 6, 9, 12].map((at) => (
+        <Sfx key={`p${at}`} name="pop" at={at} volume={0.2} />
+      ))}
+      <Sfx name="whoosh" at={46} volume={0.4} />
+      <Sfx name="impact" at={60} volume={0.45} />
+      <Sfx name="whoosh" at={84} volume={0.3} />
+      <Sfx name="pop" at={115} volume={0.28} />
+      <Sfx name="whoosh" at={178} volume={0.35} />
+      <Sfx name="pop" at={216} volume={0.3} />
+      <Sfx name="pop" at={220} volume={0.3} />
+      <Sfx name="swipe" at={258} volume={0.3} />
+      <Sfx name="swipe" at={298} volume={0.3} />
+      <Sfx name="pop" at={314} volume={0.3} />
+      <Sfx name="whoosh" at={356} volume={0.3} />
+      <Sfx name="pop" at={364} volume={0.35} />
+      <Sfx name="whoosh" at={418} volume={0.3} />
+      <Sfx name="pop" at={430} volume={0.28} />
+      <Sfx name="pop" at={438} volume={0.28} />
+      <Sfx name="success" at={442} volume={0.3} />
+      {[460, 475, 490].map((at) => (
+        <Sfx key={`t${at}`} name="pop" at={at} volume={0.3} />
+      ))}
+      <Sfx name="flip" at={532} volume={0.45} />
+      <Sfx name="coins" at={566} volume={0.35} />
+      <Sfx name="notify" at={606} volume={0.45} />
+      <Sfx name="whoosh" at={656} volume={0.3} />
+      <Sfx name="logo" at={690} volume={0.6} />
+    </AbsoluteFill>
   );
 };

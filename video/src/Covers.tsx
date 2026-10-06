@@ -11,7 +11,7 @@ import { BlueBg, NavyBg } from './components/Backgrounds';
 import { KineticText } from './components/KineticText';
 import { Logo } from './components/Logo';
 import { Phone } from './components/Phone';
-import { HomeScreen } from './components/Screens';
+import { HomeR } from './components/Real';
 
 const StaticTile: React.FC<{ name: Parameters<typeof icon3d>[0]; x: number; y: number; size: number; rotate: number }> = ({ name, x, y, size, rotate }) => (
   <div
@@ -100,7 +100,7 @@ export const ExplainerCover: React.FC<{ lang: string }> = ({ lang }) => {
       <StaticTile name="bike" x={160} y={1420} size={170} rotate={6} />
       <StaticTile name="speakers" x={925} y={1440} size={170} rotate={-7} />
       <Phone width={560} style={{ left: 260, top: 830, transform: 'rotate(-3deg)' }}>
-        <HomeScreen copy={copy} frame={0} />
+        <HomeR copy={copy} frame={0} />
       </Phone>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 1550, height: 370, background: `linear-gradient(180deg, rgba(30,64,175,0) 0%, ${palette.primary[70]} 70%)` }} />
     </AbsoluteFill>

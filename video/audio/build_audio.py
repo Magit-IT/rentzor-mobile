@@ -1,12 +1,14 @@
 """
-Procedural, royalty-free soundtrack + UI sound effects for the Rentzor Reels.
+Soundtrack (licensed CC BY track, cut to the 120 BPM grid) + synthesised UI
+sound effects and sound logo for the Rentzor Reels.
 
-Everything is synthesised from oscillators and seeded noise, so the output is
-deterministic and there is nothing to license. Run from video/:
+The music is «Catchy Upbeat Pop» by Music for Creators (CC BY 4.0 — credit it
+in the post caption); the effects are synthesised from oscillators and seeded
+noise. Run from video/:
 
     python3 audio/build_audio.py
 
-Writes public/audio/*.wav. Requires numpy + scipy.
+Writes public/audio/*.wav. Requires numpy, scipy and ffmpeg.
 
 Music is 120 BPM (one beat = 15 frames at 30 fps, one bar = 60 frames), so
 the compositions cut on bar lines and the edits land on the downbeat.
@@ -41,10 +43,6 @@ def note_hz(name: str) -> float:
     pitch, octave = name[:-1], int(name[-1])
     midi = 12 * (octave + 1) + names[pitch]
     return 440.0 * 2 ** ((midi - 69) / 12)
-
-
-def saw(phase: np.ndarray) -> np.ndarray:
-    return 2.0 * (phase - np.floor(phase + 0.5))
 
 
 def lowpass(x: np.ndarray, cutoff: float, order: int = 2) -> np.ndarray:
@@ -148,88 +146,7 @@ def write_wav(name: str, x: np.ndarray, peak_db: float = -1.0) -> None:
     print(f'wrote {path} ({len(x) / SR:.2f}s)')
 
 
-# ---------------------------------------------------------------- drum kit
-
-def kick() -> np.ndarray:
-    t = t_axis(0.45)
-    f = 56 + 120 * np.exp(-t / 0.03)
-    phase = np.cumsum(f) / SR
-    body = np.sin(2 * np.pi * phase) * np.exp(-t / 0.11)
-    knock = np.sin(2 * np.pi * 180 * t) * np.exp(-t / 0.025) * 0.35
-    click = highpass(rng.standard_normal(len(t)), 2500) * np.exp(-t / 0.004) * 0.5
-    k = np.tanh((body + knock + click) * 1.6)
-    return k
-
-
-def clap() -> np.ndarray:
-    t = t_axis(0.35)
-    n = rng.standard_normal(len(t))
-    e = np.zeros(len(t))
-    for off in (0.0, 0.009, 0.018):
-        i = int(off * SR)
-        e[i:] += np.exp(-(t[: len(t) - i]) / 0.007)
-    e += np.exp(-t / 0.09) * 0.55 * (t > 0.027)
-    c = bandpass(n, 900, 4200) * e
-    return c
-
-
-def hat(open_: bool = False) -> np.ndarray:
-    t = t_axis(0.3 if open_ else 0.06)
-    n = rng.standard_normal(len(t))
-    metal = sum(np.sign(np.sin(2 * np.pi * f * t)) for f in (3200, 4570, 6230, 8150)) * 0.15
-    h = highpass(n + metal, 7000) * np.exp(-t / (0.09 if open_ else 0.014))
-    return h
-
-
-def crash() -> np.ndarray:
-    t = t_axis(2.2)
-    n = rng.standard_normal(len(t))
-    c = highpass(n, 4500) * np.exp(-t / 0.55)
-    return c
-
-
 # ---------------------------------------------------------------- synths
-
-PROGRESSION = [  # one chord per bar: C(add9) - G - Am7 - Fmaj7  (I-V-vi-IV)
-    {'root': 'C2', 'pad': ['C4', 'E4', 'G4', 'D5'], 'arp': ['C5', 'G5', 'E5', 'D6']},
-    {'root': 'G1', 'pad': ['B3', 'D4', 'G4', 'A4'], 'arp': ['B4', 'G5', 'D5', 'A5']},
-    {'root': 'A1', 'pad': ['C4', 'E4', 'G4', 'A4'], 'arp': ['A4', 'E5', 'C5', 'G5']},
-    {'root': 'F1', 'pad': ['A3', 'C4', 'E4', 'G4'], 'arp': ['A4', 'F5', 'C5', 'E5']},
-]
-
-
-def pad_chord(notes: list[str], seconds: float, cutoff: float) -> np.ndarray:
-    t = t_axis(seconds)
-    out = np.zeros((len(t), 2))
-    for j, nm in enumerate(notes):
-        f = note_hz(nm)
-        for d, p in ((-0.11, -0.6), (0.0, 0.0), (0.12, 0.6)):
-            fd = f * 2 ** (d / 12)
-            ph = rng.random()
-            v = saw(fd * t + ph) * 0.18
-            out += pan(v, p * 0.7)
-    a = np.clip(t / 0.08, 0, 1) * np.clip((seconds - t) / 0.12, 0, 1)
-    out *= a[:, None]
-    out[:, 0] = lowpass(out[:, 0], cutoff)
-    out[:, 1] = lowpass(out[:, 1], cutoff)
-    return out
-
-
-def pluck(nm: str, seconds: float = 0.35, bright: float = 4200) -> np.ndarray:
-    t = t_axis(seconds)
-    f = note_hz(nm)
-    v = (saw(f * t) * 0.6 + np.sign(np.sin(2 * np.pi * f * t)) * 0.25 + np.sin(2 * np.pi * f * t) * 0.4)
-    v = sweep_filter(v * env_ad(len(t), 0.002, 0.11), bright, 600, q=0.9, block=128)
-    return v
-
-
-def bass_note(nm: str, seconds: float) -> np.ndarray:
-    t = t_axis(seconds)
-    f = note_hz(nm) * 2  # one octave up so phone speakers can carry it
-    v = saw(f * t) * 0.5 + np.sin(2 * np.pi * f * t) * 0.8 + np.sin(np.pi * f * t) * 0.5
-    v = lowpass(v, 520, order=2) * env_ad(len(t), 0.004, 0.18)
-    return np.tanh(v * 1.4)
-
 
 def bell(nm: str, seconds: float = 1.2) -> np.ndarray:
     t = t_axis(seconds)
@@ -248,95 +165,47 @@ def riser(seconds: float) -> np.ndarray:
     return r
 
 
-# ---------------------------------------------------------------- arrangement
+# ---------------------------------------------------------------- music
 
-LAYERS = ('kick', 'clap', 'hats', 'bass', 'pad', 'arp', 'bell')
-
-SECTIONS = {
-    #          kick clap hats bass pad  arp  bell   pad cutoff
-    'intro':  (0,   0,   1,   0,   1,   1,   0,     1400),
-    'lift':   (1,   0,   1,   0,   1,   1,   0,     2200),
-    'groove': (1,   1,   1,   1,   1,   1,   0,     2600),
-    'drop':   (1,   1,   1,   1,   1,   1,   1,     3600),
-    'break':  (0,   0,   0,   0,   1,   1,   1,     1800),
-}
+# «Catchy Upbeat Pop» by Music for Creators — CC BY 4.0
+# https://freemusicarchive.org/music/fretbound/pop-background-music/catchy-upbeat-pop/
+# The track runs at ~118.0 BPM with its first beat at 0.483 s. It is sped up
+# by 120/118.01 (≈1.7 %, inaudible) so its beats land on the videos' 120 BPM
+# grid (15 frames per beat).
+TRACK = os.path.join(os.path.dirname(__file__), '..', 'music', 'catchy-upbeat-pop.mp3')
+TRACK_BPM = 118.01
+TRACK_FIRST_BEAT = 0.483
 
 
-def render_track(bars: list[str], tail: float, risers_at: list[int], crash_at: list[int],
-                 end_hit_bar: int, arp_gain: float = 0.8) -> np.ndarray:
-    total = len(bars) * BAR + tail
-    n = int(total * SR)
-    drums = np.zeros((n, 2))
-    music = np.zeros((n, 2))
-    side = np.ones(n)  # sidechain gain for the tonal layers
+def track_cut(start_beat: int, seconds: float, fade_in: float, fade_out: float) -> np.ndarray:
+    """`seconds` of the track (at 120 BPM) starting exactly on beat `start_beat`."""
+    import subprocess
+    tempo = BPM / TRACK_BPM
+    start = TRACK_FIRST_BEAT + start_beat * 60.0 / TRACK_BPM
+    raw = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-ss', f'{start:.4f}', '-t', f'{seconds * tempo + 0.5:.3f}', '-i', TRACK,
+         '-af', f'atempo={tempo:.6f}', '-ac', '2', '-ar', str(SR), '-f', 's16le', '-'],
+        capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, '<i2').reshape(-1, 2).astype(float) / 32768
+    x = x[: int(seconds * SR)].copy()
+    fi, fo = int(fade_in * SR), int(fade_out * SR)
+    if fi:
+        x[:fi] *= np.linspace(0, 1, fi)[:, None] ** 2
+    if fo:
+        x[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.5
+    return x
 
-    K, C, HC, HO = kick(), clap(), hat(False), hat(True)
-    for b, sec in enumerate(bars):
-        flags = SECTIONS[sec]
-        on = dict(zip(LAYERS, flags[:7]))
-        cutoff = flags[7]
-        chord = PROGRESSION[b % 4]
-        t0 = b * BAR
-        for beat in range(4):
-            tb = t0 + beat * BEAT
-            if on['kick']:
-                place(drums, K, tb, 0.62)
-                i = int(tb * SR)
-                m = min(n - i, int(0.3 * SR))
-                tt = np.arange(m) / SR
-                side[i:i + m] = np.minimum(side[i:i + m], 1 - 0.55 * np.exp(-tt / 0.11))
-            if on['clap'] and beat in (1, 3):
-                place(drums, pan(C, 0.05), tb, 0.85)
-            if on['hats']:
-                place(drums, pan(HC, 0.25), tb + BEAT / 2, 0.55)
-                place(drums, pan(HC, -0.2), tb + BEAT / 4 * 3, 0.2)
-                if sec in ('groove', 'drop') and beat == 3:
-                    place(drums, pan(HO, 0.3), tb + BEAT / 2, 0.3)
-        if on['bass']:
-            for k in range(8):  # off-beat eighths, pumping house bass
-                if k % 2 == 1:
-                    place(music, pan(bass_note(chord['root'], BEAT / 2 * 0.95), 0), t0 + k * BEAT / 2, 0.55)
-        if on['pad']:
-            place(music, pad_chord(chord['pad'], BAR, cutoff), t0, 0.55)
-        if on['arp']:
-            seq = chord['arp']
-            for k in range(16):
-                if k % 4 == 3 and sec in ('intro', 'break'):
-                    continue
-                nm = seq[(k * 3) % 4]
-                p = pluck(nm, 0.3, 2400 + cutoff)
-                place(music, pan(p, 0.35 if k % 2 else -0.35), t0 + k * BEAT / 4, arp_gain * (1.0 if k % 4 == 0 else 0.7))
-        if on['bell'] and b % 2 == 0:
-            motif = [(0.0, chord['arp'][2]), (1.5, chord['arp'][1]), (3.0, chord['arp'][3])]
-            for off, nm in motif:  # offsets in beats
-                place(music, pan(bell(nm), 0.15), t0 + off * BEAT, 0.18)
 
-    for b in risers_at:
-        place(music, pan(riser(BAR), 0.0), b * BAR - BAR, 0.16)
-    for b in crash_at:
-        place(drums, pan(crash(), -0.1), b * BAR, 0.32)
-
-    # final hit: kick + crash + full chord ringing out through the tail
-    tb = end_hit_bar * BAR
-    place(drums, K, tb, 1.0)
-    place(drums, pan(crash(), 0.0), tb, 0.45)
-    chord = PROGRESSION[0]
-    ring = pad_chord(chord['pad'], tail + 0.2, 3200) * env_ad(int((tail + 0.2) * SR), 0.01, tail / 2.2)[:, None]
-    place(music, ring, tb, 0.55)
-    for nm in ('C5', 'E5', 'G5', 'C6'):
-        place(music, pan(bell(nm, tail), 0), tb, 0.12)
-
-    music *= side[:, None]
-    mix = reverb(music, 0.28, seed=3)[:n] + reverb(drums, 0.10, seconds=1.2, decay=0.3, seed=5)[:n]
-    # tidy the sub (phones can't play it anyway) and add a little air
-    for c in range(2):
-        mix[:, c] = highpass(mix[:, c], 40)
-        mix[:, c] += 0.35 * highpass(mix[:, c], 3500)
-    mix = np.tanh(mix * 0.9) / 0.9
-    # gentle fade over the last 0.6 s
-    f = int(0.6 * SR)
-    mix[-f:] *= np.linspace(1, 0, f)[:, None]
-    return mix
+def sonic_logo() -> np.ndarray:
+    """Rentzor sound logo: a bright three-note rise (E5 → B5 → E6) with a soft shimmer."""
+    out = np.zeros(int(1.8 * SR))
+    for k, (nm, g) in enumerate((('E5', 0.7), ('B5', 0.75), ('E6', 0.9))):
+        x = bell(nm, 1.4) * g
+        i = int(k * 0.13 * SR)
+        out[i:i + len(x)] += x[: len(out) - i]
+    t = t_axis(len(out) / SR)
+    shimmer = highpass(rng.standard_normal(len(out)), 7000) * np.exp(-np.maximum(t - 0.26, 0) / 0.35) * (t > 0.26) * 0.08
+    return reverb(out + shimmer, 0.3, seconds=1.6, decay=0.45, seed=21)[: len(out)]
 
 
 # ---------------------------------------------------------------- sound effects
@@ -446,25 +315,12 @@ def sfx_swipe() -> np.ndarray:
 def main() -> None:
     os.makedirs(OUT, exist_ok=True)
 
-    # Promo: 12 bars (24 s) + 1 s ring-out = 25 s
-    promo = (['lift']                # 0     hook
-             + ['drop'] * 4          # 1-4   rent-don't-buy, everything nearby
-             + ['groove'] * 4        # 5-8   map, trust
-             + ['drop'] * 3)         # 9-11  owner earnings, CTA
-    write_wav('music-promo.wav', render_track(promo, tail=1.0, risers_at=[1, 5, 9],
-                                              crash_at=[1, 5, 9], end_hit_bar=12), peak_db=-1.5)
+    # Promo (25 s): straight into the full-energy section (beat 96 ≈ 0:49).
+    write_wav('music-promo.wav', track_cut(96, 25.0, 0.02, 1.6), peak_db=-1.0)
+    # Explainer (87 s): from the top — the softer intro sits under the logo.
+    write_wav('music-explainer.wav', track_cut(0, 87.5, 0.0, 2.5), peak_db=-1.0)
 
-    # Explainer: 41 bars (82 s) + 1 s ring-out = 83 s
-    expl = (['intro'] * 3            # 0-2   logo + hook
-            + ['lift'] * 3           # 3-5   two sides + chapter card
-            + ['groove'] * 15        # 6-20  renter steps
-            + ['break']              # 21    flip to owner
-            + ['groove'] * 14        # 22-35 owner steps
-            + ['drop'] * 5)          # 36-40 recap + CTA
-    write_wav('music-explainer.wav', render_track(expl, tail=1.0, risers_at=[6, 22, 36],
-                                                  crash_at=[6, 22, 36], end_hit_bar=41, arp_gain=0.7),
-              peak_db=-1.5)
-
+    write_wav('logo.wav', sonic_logo(), -3)
     write_wav('whoosh.wav', sfx_whoosh(), -3)
     write_wav('swipe.wav', sfx_swipe(), -6)
     write_wav('pop.wav', sfx_pop(), -6)
